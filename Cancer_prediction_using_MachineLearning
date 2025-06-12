@@ -119,3 +119,13 @@ print(data.head(20))
 # Save cleaned dataset
 data.to_csv("cleaned_kidney_disease.csv", index=False)
 print("Cleaned dataset saved as 'cleaned_kidney_disease.csv'")
+import matplotlib.pyplot as plt  # ✅ Corrected typo: 'mathplotlib' → 'matplotlib'
+import seaborn as sns            # ✅ Corrected typo: 'seaborm' → 'seaborn'
+
+plt.figure(figsize=(15, 8))
+sns.heatmap(data.corr(), annot=True, linewidths=0.5)
+plt.title('Correlation Heatmap', fontsize=16)
+plt.xticks(rotation=45)
+plt.yticks(rotation=0)
+plt.tight_layout()
+plt.show()
