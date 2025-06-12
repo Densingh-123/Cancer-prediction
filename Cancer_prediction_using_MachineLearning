@@ -129,3 +129,45 @@ plt.xticks(rotation=45)
 plt.yticks(rotation=0)
 plt.tight_layout()
 plt.show()
+target_corr = data.corr()['classification'].abs().sort_values(ascending=False)[1:]
+target_corr
+from sklearn.model_selection import train_test_split
+x=data.drop('classification',axis=1)
+y=data['classification']
+x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.25,random_state=25)
+print(x_train.shape)
+print(x_test.shape)
+from sklearn.tree import DecisionTreeClassifier
+dct=DecisionTreeClassifier()
+dct.fit(x_train,y_train)
+y_pred_dct=dct.predict(x_test)
+y_pred_dct
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.tree import DecisionTreeClassifier  # You forgot to import this
+
+models = []
+
+# Fixing all typos
+models.append(('Naive Bayes', GaussianNB()))
+models.append(('KNN', KNeighborsClassifier(n_neighbors=8)))  # Fixed typo: n_neighbours → n_neighbors
+models.append(('RandomForestClassifier', RandomForestClassifier()))
+models.append(('DecisionTreeClassifier', DecisionTreeClassifier()))  # Fixed spelling: Dicision → Decision
+models.append(('SVM', SVC(kernel='linear')))  # Fixed spelling: kernal → kernel
+
+from sklearn.metrics import accuracy_score,precision_score,recall_score,f1_score,confusion_matrix
+from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
+
+for name, model in models:
+    print(f"Model: {name}")
+    model.fit(x_train, y_train)
+    y_pred = model.predict(x_test)
+    
+    print("Confusion Matrix:\n", confusion_matrix(y_test, y_pred))
+    print("Accuracy: ", accuracy_score(y_test, y_pred))
+    print("Precision: ", precision_score(y_test, y_pred))
+    print("Recall: ", recall_score(y_test, y_pred))
+    print("F1 Score: ", f1_score(y_test, y_pred))
+    print("-" * 40)
