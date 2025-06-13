@@ -1,0 +1,52 @@
+import numpy as np
+import pandas as pd
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+# Load data
+data = pd.read_csv(r'C:\Users\Densingh\Downloads\sonar data.csv', header=None)
+
+# Data preparation
+x = data.drop(columns=60, axis=1)
+y = data[60]
+
+# Split data
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.1, stratify=y, random_state=1)
+
+# Train model
+model = LogisticRegression(max_iter=1000)
+model.fit(x_train, y_train)
+
+# Training accuracy
+train_predict = model.predict(x_train)
+accuracy = accuracy_score(train_predict, y_train)
+print("Accuracy :", accuracy)
+
+# Sample input data (correct format)
+input_data = (0.0298, 0.0615, 0.065, 0.0921, 0.1615, 0.2294, 0.2176, 0.2033, 0.1459, 0.0852, 
+              0.2476, 0.3645, 0.2777, 0.2826, 0.3237, 0.4335, 0.5638, 0.4555, 0.4348, 0.6433, 
+              0.3932, 0.1989, 0.354, 0.9165, 0.9371, 0.462, 0.2771, 0.6613, 0.8028, 0.42, 
+              0.5192, 0.6962, 0.5792, 0.8889, 0.7863, 0.7133, 0.7615, 0.4401, 0.3009, 0.3163, 
+              0.2809, 0.2898, 0.0526, 0.1867, 0.1553, 0.1633, 0.1252, 0.0748, 0.0452, 0.0064, 
+              0.0154, 0.0031, 0.0153, 0.0071, 0.0212, 0.0076, 0.0152, 0.0049, 0.02, 0.0073)
+'''input_data = (
+    0.026, 0.0363, 0.0136, 0.0272, 0.0214, 0.0338, 0.0655, 0.14, 0.1843, 0.2354,
+    0.272, 0.2442, 0.1665, 0.0336, 0.1302, 0.1708, 0.2177, 0.3175, 0.3714, 0.4552,
+    0.57, 0.7397, 0.8062, 0.8837, 0.9432, 1, 0.9375, 0.7603, 0.7123, 0.8358, 
+    0.7622, 0.4567, 0.1715, 0.1549, 0.1641, 0.1869, 0.2655, 0.1713, 0.0959, 
+    0.0768, 0.0847, 0.2076, 0.2505, 0.1862, 0.1439, 0.147, 0.0991, 0.0041, 
+    0.0154, 0.0116, 0.0181, 0.0146, 0.0129, 0.0047, 0.0039, 0.0061, 0.004, 
+    0.0036, 0.0061, 0.0115
+)'''
+
+# Predict
+numpy_array = np.asarray(input_data)
+reshaped = numpy_array.reshape(1, -1)
+prediction = model.predict(reshaped)
+print("Prediction: ", prediction[0])
+
+if prediction[0] == "R":
+    print("Object is Rock")
+else:
+    print("Object is Mine")
