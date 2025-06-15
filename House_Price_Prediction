@@ -1,0 +1,66 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from xgboost import XGBRegressor
+from sklearn import metrics
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load dataset
+data = pd.read_csv("C:/Users/Densingh/Downloads/Housing.csv")
+
+# Clean categorical columns
+
+# 1. yes/no columns mapping
+yes_no_mapping = {'yes': 1, 'no': 0}
+columns_to_map = ['mainroad', 'guestroom', 'basement', 'hotwaterheating', 'airconditioning', 'prefarea']
+for column in columns_to_map:
+    data[column] = data[column].map(yes_no_mapping)
+
+# 2. furnishingstatus mapping
+furnishing_mapping = {'unfurnished': 0, 'semi-furnished': 1, 'furnished': 2}
+data['furnishingstatus'] = data['furnishingstatus'].map(furnishing_mapping)
+
+# Now dataset is fully numeric — safe to calculate correlation
+correlation = data.corr()
+
+# Show correlation heatmap
+plt.figure(figsize=(10,10))
+sns.heatmap(correlation, cbar=True, square=True, fmt='.1f', annot=True, annot_kws={'size':8}, cmap='Blues')
+plt.show()
+
+# Split data into features (X) and target (y)
+x = data.drop(columns='price', axis=1)
+y = data['price']
+
+# Optional: Train-test split for model training
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+
+# Train XGBoost regressor
+model = XGBRegressor()
+model.fit(x_train, y_train)
+
+# Predict & evaluate
+y_pred = model.predict(x_train)
+score1 = metrics.r2_score(y_train, y_pred)
+score2=metrics.mean_absolute_error(y_train,y_pred)
+print("R2 Score:", score1)
+print("Mean Absolute Error:", score2)
+plt.scatter(y_train,y_pred)
+plt.xlabel("Actual Price")
+plt.ylabel("Predicted Price")
+plt.title("Actual price vs predicted price")
+plt.show()
+# Evaluate on test data
+y_test_pred = model.predict(x_test)
+test_score1 = metrics.r2_score(y_test, y_test_pred)
+test_score2 = metrics.mean_absolute_error(y_test, y_test_pred)
+print("Test R2 Score:", test_score1)
+print("Test Mean Absolute Error:", test_score2)
+
+# Plot for test data
+plt.scatter(y_test, y_test_pred)
+plt.xlabel("Actual Price (Test)")
+plt.ylabel("Predicted Price (Test)")
+plt.title("Actual price vs predicted price (Test Data)")
+plt.show()
