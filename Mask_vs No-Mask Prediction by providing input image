@@ -1,0 +1,163 @@
+# -----------------------------
+# 1. Download & Extract Dataset
+# -----------------------------
+!mkdir -p ~/.kaggle
+!cp kaggle.json ~/.kaggle/
+!chmod 600 ~/.kaggle/kaggle.json 
+!kaggle datasets download -d omkargurav/face-mask-dataset
+
+from zipfile import ZipFile
+dataset = '/content/face-mask-dataset.zip'
+
+with ZipFile(dataset, 'r') as zip:
+    zip.extractall()
+    print('The dataset is extracted.')
+
+# -----------------------------
+# 2. Imports
+# -----------------------------
+import numpy as np
+import os
+import matplotlib.pyplot as plt
+from PIL import Image
+import cv2
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from tensorflow import keras
+
+# -----------------------------
+# 3. Load & Explore Data
+# -----------------------------
+with_mask_files = os.listdir('/content/data/with_mask')
+without_mask_files = os.listdir('/content/data/without_mask')
+
+print("Sample with_mask files:", with_mask_files[:5])
+print("Sample without_mask files:", without_mask_files[:5])
+print("Number of with_mask images:", len(with_mask_files))
+print("Number of without_mask images:", len(without_mask_files))
+
+# Create labels
+with_mask_labels = [1] * len(with_mask_files)     # 1: with mask
+without_mask_labels = [0] * len(without_mask_files) # 0: without mask
+labels = with_mask_labels + without_mask_labels
+
+# Display sample images
+img1 = Image.open('/content/data/with_mask/' + with_mask_files[0])
+img2 = Image.open('/content/data/without_mask/' + without_mask_files[0])
+plt.figure(figsize=(8, 4))
+plt.subplot(1, 2, 1)
+plt.imshow(img1)
+plt.title("With Mask")
+plt.axis("off")
+plt.subplot(1, 2, 2)
+plt.imshow(img2)
+plt.title("Without Mask")
+plt.axis("off")
+plt.show()
+
+# -----------------------------
+# 4. Data Preprocessing
+# -----------------------------
+img_size = 128
+data = []
+
+# Load with_mask images
+with_mask_path = '/content/data/with_mask/'
+for img in with_mask_files:
+    image = Image.open(with_mask_path + img).resize((img_size, img_size)).convert('RGB')
+    data.append(np.array(image))
+
+# Load without_mask images
+without_mask_path = '/content/data/without_mask/'
+for img in without_mask_files:
+    image = Image.open(without_mask_path + img).resize((img_size, img_size)).convert('RGB')
+    data.append(np.array(image))
+
+# Convert to NumPy arrays
+X = np.array(data)
+y = np.array(labels)
+
+# Normalize data
+X = X / 255.0
+
+# Split dataset
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=2)
+
+print("X_train shape:", X_train.shape)
+print("X_test shape:", X_test.shape)
+
+# -----------------------------
+# 5. Build CNN Model
+# -----------------------------
+model = keras.Sequential([
+    keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(img_size, img_size, 3)),
+    keras.layers.MaxPooling2D(2, 2),
+
+    keras.layers.Conv2D(64, (3,3), activation='relu'),
+    keras.layers.MaxPooling2D(2, 2),
+
+    keras.layers.Flatten(),
+    keras.layers.Dense(128, activation='relu'),
+    keras.layers.Dropout(0.5),
+    keras.layers.Dense(64, activation='relu'),
+    keras.layers.Dense(2, activation='softmax')  # 2 classes
+])
+
+model.compile(optimizer='adam',
+              loss='sparse_categorical_crossentropy',
+              metrics=['accuracy'])
+
+model.summary()
+
+# -----------------------------
+# 6. Train the Model
+# -----------------------------
+history = model.fit(X_train, y_train, validation_split=0.1, epochs=5)
+
+# -----------------------------
+# 7. Evaluate the Model
+# -----------------------------
+loss, accuracy = model.evaluate(X_test, y_test)
+print(f'Test Accuracy: {accuracy:.2f}')
+
+# Plotting loss and accuracy
+plt.figure(figsize=(12, 4))
+plt.subplot(1, 2, 1)
+plt.plot(history.history['loss'], label='Train Loss')
+plt.plot(history.history['val_loss'], label='Val Loss')
+plt.title("Loss Curve")
+plt.legend()
+
+plt.subplot(1, 2, 2)
+plt.plot(history.history['accuracy'], label='Train Acc')
+plt.plot(history.history['val_accuracy'], label='Val Acc')
+plt.title("Accuracy Curve")
+plt.legend()
+plt.show()
+
+# -----------------------------
+# 8. Predict on New Image
+# -----------------------------
+input_image_path = input("Path of the image to be predicted: ")
+
+# Load and preprocess image
+input_img = cv2.imread(input_image_path)
+input_img_resized = cv2.resize(input_img, (img_size, img_size))
+input_img_rgb = cv2.cvtColor(input_img_resized, cv2.COLOR_BGR2RGB)
+input_img_normalized = input_img_rgb.reshape(1, img_size, img_size, 3) / 255.0
+
+# Prediction
+prediction = model.predict(input_img_normalized)
+predicted_label = np.argmax(prediction)
+
+# Show input image
+plt.imshow(input_img_rgb)
+plt.title("Input Image")
+plt.axis('off')
+plt.show()
+
+# Display result
+if predicted_label == 0:
+    print("The person in the image is **not wearing a mask**.")
+else:
+    print("The person in the image is **wearing a mask**.")
