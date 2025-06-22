@@ -1,0 +1,117 @@
+# Import necessary libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import os
+import cv2
+from google.colab.patches import cv2_imshow  # For Colab image display
+from PIL import Image
+import tensorflow as tf
+from tensorflow import keras
+from tensorflow.keras.datasets import mnist
+from tensorflow.math import confusion_matrix
+
+# Set random seed for reproducibility
+tf.random.set_seed(0)
+
+# Load MNIST dataset
+(x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+# Normalize the input images (not the labels!)
+x_train = x_train / 255.0
+x_test = x_test / 255.0
+
+# Visualize a sample
+print("Label:", y_train[10])
+plt.imshow(x_train[10], cmap='gray')
+plt.title(f"Digit: {y_train[10]}")
+plt.show()
+
+# Check unique labels
+print("Unique labels in training set:", np.unique(y_train))
+
+# Build the neural network model
+model = keras.Sequential([
+    keras.layers.Flatten(input_shape=(28, 28)),
+    keras.layers.Dense(128, activation='relu'),
+    keras.layers.Dropout(0.2),  # To reduce overfitting
+    keras.layers.Dense(10, activation='softmax')
+])
+
+# Compile the model
+model.compile(
+    optimizer='adam',
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# Train the model
+model.fit(x_train, y_train, epochs=20, validation_split=0.2)
+
+# Evaluate on test data
+loss, accuracy = model.evaluate(x_test, y_test)
+print("Test Accuracy:", accuracy)
+print("Test Loss:", loss)
+
+# Predict on test images
+y_pred = model.predict(x_test)
+print("Shape of prediction output:", y_pred.shape)
+print("Predicted probabilities for first image:\n", y_pred[0])
+
+# Visualize the first test image
+plt.imshow(x_test[0], cmap='gray')
+plt.title("First test image")
+plt.show()
+
+# Get the predicted label
+predicted_label = np.argmax(y_pred[0])
+print("Predicted Label for first image:", predicted_label)
+
+# Convert all predictions to labels
+y_pred_labels = [np.argmax(i) for i in y_pred]
+
+# Create and plot confusion matrix
+conf_mat = confusion_matrix(y_test, y_pred_labels)
+plt.figure(figsize=(12, 6))
+sns.heatmap(conf_mat, annot=True, fmt='d', cmap='Blues')
+plt.title("Confusion Matrix")
+plt.xlabel("Predicted")
+plt.ylabel("True")
+plt.show()
+
+# ==============================
+# Load and predict a custom image
+# ==============================
+
+# Path to the custom image
+input_image_path = "/content/one.png"
+
+# Read the image
+input_image = cv2.imread(input_image_path)
+print("Original image shape:", input_image.shape)
+
+# Display original image
+cv2_imshow(input_image)
+
+# Convert to grayscale
+gray_scale = cv2.cvtColor(input_image, cv2.COLOR_BGR2GRAY)
+plt.imshow(gray_scale, cmap='gray')
+plt.title("Grayscale Image")
+plt.show()
+
+# Resize to 28x28
+input_image_resize = cv2.resize(gray_scale, (28, 28))
+plt.imshow(input_image_resize, cmap='gray')
+plt.title("Resized Image (28x28)")
+plt.show()
+
+# Normalize and reshape for prediction
+input_image_resize = input_image_resize / 255.0
+image_reshape = np.reshape(input_image_resize, [1, 28, 28])
+print("Reshaped input image shape:", image_reshape.shape)
+
+# Predict using the trained model
+prediction = model.predict(image_reshape)
+print("Prediction probabilities:", prediction)
+print("Predicted digit from image:", np.argmax(prediction))
