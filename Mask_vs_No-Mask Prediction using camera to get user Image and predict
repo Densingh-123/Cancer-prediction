@@ -1,0 +1,126 @@
+import os
+import numpy as np
+import cv2
+from PIL import Image
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+import tensorflow as tf
+from tensorflow import keras
+
+# ----------------------------
+# 1. Load and prepare dataset
+# ----------------------------
+
+with_mask_path = r"C:\Users\Densingh\Downloads\maask\data\with_mask"
+without_mask_path = r"C:\Users\Densingh\Downloads\maask\data\without_mask"
+
+with_mask_files = os.listdir(with_mask_path)
+without_mask_files = os.listdir(without_mask_path)
+
+data = []
+labels = []
+
+# Read and preprocess images with mask
+for img_name in with_mask_files:
+    img_path = os.path.join(with_mask_path, img_name)
+    img = Image.open(img_path).convert('RGB')
+    img = img.resize((128, 128))
+    data.append(np.array(img))
+    labels.append(1)  # with mask
+
+# Read and preprocess images without mask
+for img_name in without_mask_files:
+    img_path = os.path.join(without_mask_path, img_name)
+    img = Image.open(img_path).convert('RGB')
+    img = img.resize((128, 128))
+    data.append(np.array(img))
+    labels.append(0)  # without mask
+
+data = np.array(data)
+labels = np.array(labels)
+
+# Normalize
+data = data / 255.0
+
+# Split into train and test
+x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, random_state=42)
+
+# ----------------------------
+# 2. Build the CNN model
+# ----------------------------
+model = keras.Sequential([
+    keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(128,128,3)),
+    keras.layers.MaxPooling2D(2,2),
+    keras.layers.Conv2D(64, (3,3), activation='relu'),
+    keras.layers.MaxPooling2D(2,2),
+    keras.layers.Flatten(),
+    keras.layers.Dense(128, activation='relu'),
+    keras.layers.Dropout(0.5),
+    keras.layers.Dense(64, activation='relu'),
+    keras.layers.Dense(2, activation='softmax')  # 2 classes: with/without mask
+])
+
+model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+model.summary()
+
+# ----------------------------
+# 3. Train the model
+# ----------------------------
+history = model.fit(x_train, y_train, validation_split=0.1, epochs=5)
+
+# ----------------------------
+# 4. Evaluate model
+# ----------------------------
+loss, accuracy = model.evaluate(x_test, y_test)
+print("Test Accuracy:", accuracy)
+
+# ----------------------------
+# 5. Webcam + Prediction
+# ----------------------------
+print("\n>>> Opening webcam to capture image and predict mask status...")
+
+# Open webcam
+cap = cv2.VideoCapture(0)
+
+if not cap.isOpened():
+    print("Error: Cannot open webcam.")
+    exit()
+
+print("Press SPACE to capture and predict")
+print("Press ESC to exit")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("Failed to grab frame.")
+        break
+
+    cv2.imshow("Webcam - Press SPACE", frame)
+    key = cv2.waitKey(1)
+
+    if key == 27:  # ESC to exit
+        print("Exiting...")
+        break
+    elif key == 32:  # SPACE to capture
+        input_img = cv2.resize(frame, (128, 128))
+        input_img_model = input_img.reshape(1, 128, 128, 3) / 255.0
+
+        prediction = model.predict(input_img_model)
+        input_pred_label = np.argmax(prediction)
+
+        if input_pred_label == 0:
+            result = "❌ No Mask"
+        else:
+            result = "✅ Mask On"
+
+        print("Prediction:", result)
+
+        # Show image with result
+        plt.imshow(cv2.cvtColor(input_img, cv2.COLOR_BGR2RGB))
+        plt.title(f"Prediction: {result}")
+        plt.axis('off')
+        plt.show()
+
+cap.release()
+cv2.destroyAllWindows()
