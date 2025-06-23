@@ -1,0 +1,95 @@
+# Install Kaggle and setup credentials
+!pip install kaggle
+!mkdir -p ~/.kaggle
+!cp kaggle.json ~/.kaggle/
+!chmod 600 ~/.kaggle/kaggle.json
+
+# Download and unzip the dataset
+!kaggle datasets download -d kazanova/sentiment140
+from zipfile import ZipFile
+with ZipFile('/content/sentiment140.zip', 'r') as zip:
+    zip.extractall()
+print('Extraction done.')
+
+# Import required libraries
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re
+import nltk
+from nltk.corpus import stopwords
+from nltk.stem.porter import PorterStemmer
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+import pickle
+
+# Download stopwords
+nltk.download('stopwords')
+english_stopwords = set(stopwords.words('english'))
+
+# Load dataset
+data = pd.read_csv('/content/training.1600000.processed.noemoticon.csv', encoding='latin-1', header=None)
+column_names = ['target', 'id', 'date', 'flag', 'user', 'text']
+data.columns = column_names
+
+# Binary classification: replace 4 with 1
+data.replace({'target': {4: 1}}, inplace=True)
+
+# Stemming function
+port_stem = PorterStemmer()
+def stemming(content):
+    content = re.sub('[^A-Za-z]', ' ', content)
+    content = content.lower()
+    content = content.split()
+    stemmed = [port_stem.stem(word) for word in content if word not in english_stopwords]
+    return ' '.join(stemmed)
+
+# Apply stemming
+data['stemmed_content'] = data['text'].apply(stemming)
+
+# Prepare features and labels
+x = data['stemmed_content'].values
+y = data['target'].values
+
+# Split data
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, stratify=y, random_state=2)
+
+# Vectorization using TF-IDF
+vectorizer = TfidfVectorizer()
+vectorizer.fit(x_train)
+
+x_train = vectorizer.transform(x_train)
+x_test = vectorizer.transform(x_test)
+
+# Train model
+model = LogisticRegression(max_iter=1000)
+model.fit(x_train, y_train)
+
+# Evaluate
+x_train_pred = model.predict(x_train)
+train_acc = accuracy_score(y_train, x_train_pred)
+print("Training Accuracy:", train_acc)
+
+x_test_pred = model.predict(x_test)
+test_acc = accuracy_score(y_test, x_test_pred)
+print("Test Accuracy:", test_acc)
+
+# Save model
+file_name = 'Sentiment_analysis_trained_model.sav'
+pickle.dump(model, open(file_name, 'wb'))
+
+# Load and test on a new sample
+loaded_model = pickle.load(open(file_name, 'rb'))
+x_new = x_train[3]
+print("Actual:", y_train[3])
+
+prediction = loaded_model.predict(x_new)
+print("Predicted:", prediction[0])
+
+if prediction[0] == 0:
+    print("Negative Review")
+else:
+    print("Positive Review")
